@@ -4,6 +4,7 @@ import pip
 pip.main(['install', 'pytelegrambotapi'])
 import telebot
 import time
+import paho.mqtt.client as mqtt
 
 bot = telebot.TeleBot(os.environ['telegram_bot_API_token'])
 
