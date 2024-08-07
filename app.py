@@ -6,8 +6,6 @@ import paho.mqtt.client as mqtt
 # import json
 
 bot = telebot.TeleBot(os.environ['telegram_bot_API_token'])
-
-
 @bot.message_handler(commands=['temp'])
 def handle_start(message):
   readmqtt()
@@ -53,10 +51,9 @@ def readmqtt():
   # client.loop_forever()  # c этим виснет
 
 
-if __name__ == '__main__':
-  alldata = {}
-  keep_alive()  #запускаем flask-сервер в отдельном потоке. Подробнее ниже...
-  print('Here1')
-  readmqtt()
-  print('Here2')
-  bot.polling(non_stop=True, interval=0)  #запуск бота
+alldata = {}
+keep_alive()  #запускаем flask-сервер в отдельном потоке. Подробнее ниже...
+print('Here1')
+readmqtt()
+print('Here2')
+bot.polling(non_stop=True, interval=0)  #запуск бота
