@@ -1,4 +1,5 @@
 Flask
 gunicorn
 requests
+pytelegrambotapi
 paho-mqtt
