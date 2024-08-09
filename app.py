@@ -3,27 +3,113 @@ from background import keep_alive  #импорт функции для подд�
 import telebot
 import time
 import paho.mqtt.client as mqtt
+from threading import Thread, Event
 # import json
 
 bot = telebot.TeleBot(os.environ['telegram_bot_API_token'])
-@bot.message_handler(commands=['temp'])
-def handle_start(message):
-  readmqtt()
-  # bot.reply_to(message, 'Привет! Я бот.')
-  bot.reply_to(message, alldata['test/temperature'])
 
+
+@bot.message_handler(commands=['temp'])
+def handle_temp(message):
+  if 'test/temperature' in alldata:
+    del alldata['test/temperature']
+  readmqtt()
+  time.sleep(2)
+  # bot.reply_to(message, 'Привет! Я бот.')
+  if 'test/temperature' in alldata:
+    bot.reply_to(message, alldata['test/temperature'])
+  else:
+    bot.reply_to(message, 'Возможно нет подключения')
+
+my_event = Event()
+my_event.clear()
+
+@bot.message_handler(commands=['start'])
+def handle_start(message):
+  global thread1, my_event
+  thread1 = Thread(target=main4(message, my_event), args =(message, my_event,))
+  thread1.start()
+  my_event.clear()
+
+@bot.message_handler(commands=['stop'])
+def handle_stop(message):
+  global my_event
+  if 'thread1' in globals():
+    print('thread1 in globals')
+    global thread1
+    my_event.set()
+    bot.send_message(message.from_user.id, text='Мониторинг остановлен')
+  else:
+    # global my_event
+    print('thread1 not found')
+    my_event.set()
+    bot.send_message(message.from_user.id, text='Мониторинг остановлен')
+    # thread1.join()
+      
 
 @bot.message_handler(content_types=['text'])
 def get_text_message(message):
   bot.send_message(message.from_user.id, message.text)
-
-
 # echo-функция, которая отвечает на любое текстовое сообщение таким же текстом
+
+def main1(message):  #infinite messaging loop
+  print('Бот запущен')
+  while True:
+    bot.send_message(message.from_user.id, text='Какой-то текст')
+    time.sleep(10)
+
+def main2(message):  #check arduino status
+  print('Бот2 запущен')
+  bot.send_message(message.from_user.id, text='Запущен мониторинг')
+  alldata.update({'counter': 0})
+  ik=0
+  while ik<10:
+    readmqtt()
+    time.sleep(1)
+    print(alldata['counter'])
+    ik = ik+1
+  if alldata['counter']<5:
+    bot.send_message(message.from_user.id, text='Пропало подключение')
+  Thread(target=main2(message)).stop()
+
+def main3(message):  #check arduino status
+  print('Бот3 запущен')
+  bot.send_message(message.from_user.id, text='Запущен мониторинг')
+  alldata.update({'counter': 0})
+  ik=0
+  while True:
+    while ik<10:
+      readmqtt()
+      time.sleep(5)
+      print(alldata['counter'])
+      ik = ik+1
+    if alldata['counter']<5:
+      bot.send_message(message.from_user.id, text='Пропало подключение')
+    else:
+      pass
+ 
+def main4(message, event_state):  #infinite messaging loop
+  print('Бот4 запущен')
+  bot.send_message(message.from_user.id, text='Запущен мониторинг')
+  while True:
+    if event_state.is_set():
+      break
+    if 'test/temperature' in alldata:
+      del alldata['test/temperature']
+    readmqtt()
+    time.sleep(5)
+    if 'test/temperature' in alldata:
+      pass
+    else:
+      bot.reply_to(message, 'Возможно нет подключения')
+    time.sleep(5)
 
 
 # MQTT process
 def on_connect(client, userdata, flags, rc):
   client.subscribe('test/temperature')
+  global flag_connected
+  flag_connected = 1
   print('Connected')
 
 
@@ -39,6 +125,7 @@ def on_message(client, userdata, msg):
   # print(type(m_in))
   # print("method is = ", m_in["method"])  # <-- shall be m_in["method"]
   alldata.update({str(msg.topic): str(m_decode)})
+  alldata.update({'counter': alldata['counter']+1})
 
 
 def readmqtt():
@@ -51,7 +138,10 @@ def readmqtt():
   # client.loop_forever()  # c этим виснет
 
 
+# if __name__ == '__main__': проблемы в render
+flag_connected = 0
 alldata = {}
+alldata['counter'] = 0
 keep_alive()  #запускаем flask-сервер в отдельном потоке. Подробнее ниже...
 print('Here1')
 readmqtt()
