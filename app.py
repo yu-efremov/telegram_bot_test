@@ -38,12 +38,14 @@ def handle_stop(message):
     print('thread1 in globals')
     global thread1
     my_event.set()
-    bot.send_message(message.from_user.id, text='Мониторинг остановлен')
+    # bot.send_message(message.from_user.id, text='Мониторинг остановлен')
+    bot.reply_to(message, text='Мониторинг остановлен')
   else:
     # global my_event
     print('thread1 not found')
     my_event.set()
-    bot.send_message(message.from_user.id, text='Мониторинг остановлен')
+    # bot.send_message(message.from_user.id, text='Мониторинг остановлен')
+    bot.reply_to(message, text='Мониторинг остановлен')
     # thread1.join()
       
 
@@ -52,45 +54,11 @@ def get_text_message(message):
   bot.send_message(message.from_user.id, message.text)
 # echo-функция, которая отвечает на любое текстовое сообщение таким же текстом
 
-def main1(message):  #infinite messaging loop
-  print('Бот запущен')
-  while True:
-    bot.send_message(message.from_user.id, text='Какой-то текст')
-    time.sleep(10)
 
-def main2(message):  #check arduino status
-  print('Бот2 запущен')
-  bot.send_message(message.from_user.id, text='Запущен мониторинг')
-  alldata.update({'counter': 0})
-  ik=0
-  while ik<10:
-    readmqtt()
-    time.sleep(1)
-    print(alldata['counter'])
-    ik = ik+1
-  if alldata['counter']<5:
-    bot.send_message(message.from_user.id, text='Пропало подключение')
-  Thread(target=main2(message)).stop()
-
-def main3(message):  #check arduino status
-  print('Бот3 запущен')
-  bot.send_message(message.from_user.id, text='Запущен мониторинг')
-  alldata.update({'counter': 0})
-  ik=0
-  while True:
-    while ik<10:
-      readmqtt()
-      time.sleep(5)
-      print(alldata['counter'])
-      ik = ik+1
-    if alldata['counter']<5:
-      bot.send_message(message.from_user.id, text='Пропало подключение')
-    else:
-      pass
- 
 def main4(message, event_state):  #infinite messaging loop
   print('Бот4 запущен')
-  bot.send_message(message.from_user.id, text='Запущен мониторинг')
+  # bot.send_message(message.from_user.id, text='Запущен мониторинг')
+  bot.reply_to(message, 'Запущен мониторинг')
   while True:
     if event_state.is_set():
       break
@@ -99,7 +67,9 @@ def main4(message, event_state):  #infinite messaging loop
     readmqtt()
     time.sleep(5)
     if 'test/temperature' in alldata:
-      pass
+      # pass
+      # bot.send_message(message.from_user.id, alldata['test/temperature'])
+      bot.reply_to(message, alldata['test/temperature'])
     else:
       bot.reply_to(message, 'Возможно нет подключения')
     time.sleep(5)
