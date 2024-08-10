@@ -72,7 +72,7 @@ def main4(message, event_state):  #infinite messaging loop
       bot.reply_to(message, alldata['test/temperature'])
     else:
       bot.reply_to(message, 'Возможно нет подключения')
-    time.sleep(55)
+    time.sleep(60*30-5)
 
 
 # MQTT process
