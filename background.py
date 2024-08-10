@@ -11,6 +11,10 @@ app = Flask('')
 def home():
   return "I'm alive"
 
+@app.route("/favicon.ico")
+def favicon():
+    return url_for('static', filename='data:,')
+
 def run():
   app.run(host='0.0.0.0', port=80)
 
