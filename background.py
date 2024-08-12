@@ -3,6 +3,7 @@ from flask import request
 from threading import Thread
 import time
 import requests
+import myBot # бот в отдельном thread
 
 
 app = Flask('')
@@ -21,3 +22,9 @@ def run():
 def keep_alive():
   t = Thread(target=run)
   t.start()
+
+def home():
+  if myBot.bot_check():
+      return "I'm alive and bot is checked"
+  else:
+      print("Problems with bot")
