@@ -10,7 +10,10 @@ app = Flask('')
 
 @app.route('/')
 def home():
-  return "I'm alive"
+  if myBot.bot_check():
+      return "I'm alive and bot is checked"
+  else:
+      print("Problems with bot")
 
 @app.route("/favicon.ico")
 def favicon():
