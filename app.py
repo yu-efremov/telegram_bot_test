@@ -4,9 +4,10 @@ import telebot
 import time
 import paho.mqtt.client as mqtt
 from threading import Thread, Event
+from myBot import bot # бот в отдельном thread
 # import json
 
-bot = telebot.TeleBot(os.environ['telegram_bot_API_token'])
+# bot = telebot.TeleBot(os.environ['telegram_bot_API_token'])
 
 
 @bot.message_handler(commands=['temp'])
@@ -21,15 +22,21 @@ def handle_temp(message):
   else:
     bot.reply_to(message, 'Возможно нет подключения')
 
+
 my_event = Event()
 my_event.clear()
+
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
   global thread1, my_event
-  thread1 = Thread(target=main4(message, my_event), args =(message, my_event,))
+  thread1 = Thread(target=main4(message, my_event), args=(
+      message,
+      my_event,
+  ))
   thread1.start()
   my_event.clear()
+
 
 @bot.message_handler(commands=['stop'])
 def handle_stop(message):
@@ -47,13 +54,14 @@ def handle_stop(message):
     # bot.send_message(message.from_user.id, text='Мониторинг остановлен')
     bot.reply_to(message, text='Мониторинг остановлен')
     # thread1.join()
-      
+
 
 @bot.message_handler(content_types=['text'])
 def get_text_message(message):
   bot.send_message(message.from_user.id, message.text)
-# echo-функция, которая отвечает на любое текстовое сообщение таким же текстом
 
+
+# echo-функция, которая отвечает на любое текстовое сообщение таким же текстом
 
 def main4(message, event_state):  #infinite messaging loop
   print('Бот4 запущен')
@@ -95,7 +103,7 @@ def on_message(client, userdata, msg):
   # print(type(m_in))
   # print("method is = ", m_in["method"])  # <-- shall be m_in["method"]
   alldata.update({str(msg.topic): str(m_decode)})
-  alldata.update({'counter': alldata['counter']+1})
+  alldata.update({'counter': alldata['counter'] + 1})
 
 
 def readmqtt():
@@ -116,4 +124,5 @@ keep_alive()  #запускаем flask-сервер в отдельном по�
 print('Here1')
 readmqtt()
 print('Here2')
-bot.polling(non_stop=True, interval=0)  #запуск бота
+# bot.polling(non_stop=True, interval=0)  #запуск бота
+# bot.infinity_polling(none_stop=True)
