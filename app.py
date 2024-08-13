@@ -77,7 +77,7 @@ async def cmd_start(message: types.Message):
       await message.answer(alldata['test/temperature'])
     else:
       await message.answer("Возможно нет подключения")
-    await asyncio.sleep(5)  # Wait 0.5 s between the requests
+    await asyncio.sleep(60*30-5)  # Wait 0.5 s between the requests
 
 @dp.message(Command("stop"))
 async def cmd_stop(message: types.Message):
