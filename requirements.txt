@@ -1,5 +1,8 @@
 Flask
 gunicorn
 requests
-pytelegrambotapi
 paho-mqtt
+asyncio
+logging
+aiogram
+# json
