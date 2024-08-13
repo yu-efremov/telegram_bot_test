@@ -1,86 +1,116 @@
 import os
 from background import keep_alive  #импорт функции для поддержки работоспособности
-import telebot
 import time
 import paho.mqtt.client as mqtt
-from threading import Thread, Event
-from myBot import bot # бот в отдельном thread
+# from threading import Thread, Event
+import asyncio
+import logging
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters.command import Command
 # import json
 
-# bot = telebot.TeleBot(os.environ['telegram_bot_API_token'])
+# Включаем логирование, чтобы не пропустить важные сообщения
+logging.basicConfig(level=logging.INFO)
+# Объект бота
+bot = Bot(token=os.environ['telegram_bot_API_token'])
+# Диспетчер
+dp = Dispatcher()
+
+#def bot_check():
+#    return bot.get_me()
 
 
-@bot.message_handler(commands=['temp'])
-def handle_temp(message):
+# Хэндлер на команду /start
+@dp.message(Command("start1"))
+async def cmd_start1(message: types.Message):
+  await message.answer("Hello!")
+  await bot.send_message(chat_id=message.from_user.id,
+                         text="Some info")
+
+
+@dp.message(Command("temp"))
+async def cmd_temp(message: types.Message):
   if 'test/temperature' in alldata:
     del alldata['test/temperature']
   readmqtt()
-  time.sleep(2)
+  await asyncio.sleep(2)
   # bot.reply_to(message, 'Привет! Я бот.')
   if 'test/temperature' in alldata:
-    bot.reply_to(message, alldata['test/temperature'])
+    await message.answer(alldata['test/temperature'])
   else:
-    bot.reply_to(message, 'Возможно нет подключения')
+    await message.answer("Возможно нет подключения")
 
 
-my_event = Event()
+my_event = asyncio.Event()
 my_event.clear()
 
+@dp.message(Command("info"))
+async def cmd_info(message: types.Message):
+  await bot.send_message(chat_id=message.from_user.id,
+                         text="Info will be there")
 
-@bot.message_handler(commands=['start'])
-def handle_start(message):
-  global thread1, my_event
-  thread1 = Thread(target=main4(message, my_event), args=(
-      message,
-      my_event,
-  ))
-  thread1.start()
+
+@dp.message(Command("start"))
+async def cmd_start(message: types.Message):
+  # loop = asyncio.get_event_loop()
+  # loop.run_until_complete(main4(message, my_event))
+  # await bot.send_message(chat_id=message.from_user.id,
+  #    text="Запущен мониторинг")
+  await message.answer("Запущен мониторинг")
   my_event.clear()
-
-
-@bot.message_handler(commands=['stop'])
-def handle_stop(message):
-  global my_event
-  if 'thread1' in globals():
-    print('thread1 in globals')
-    global thread1
-    my_event.set()
-    # bot.send_message(message.from_user.id, text='Мониторинг остановлен')
-    bot.reply_to(message, text='Мониторинг остановлен')
-  else:
-    # global my_event
-    print('thread1 not found')
-    my_event.set()
-    # bot.send_message(message.from_user.id, text='Мониторинг остановлен')
-    bot.reply_to(message, text='Мониторинг остановлен')
-    # thread1.join()
-
-
-@bot.message_handler(content_types=['text'])
-def get_text_message(message):
-  bot.send_message(message.from_user.id, message.text)
-
-
-# echo-функция, которая отвечает на любое текстовое сообщение таким же текстом
-
-def main4(message, event_state):  #infinite messaging loop
-  print('Бот4 запущен')
-  # bot.send_message(message.from_user.id, text='Запущен мониторинг')
-  bot.reply_to(message, 'Запущен мониторинг')
   while True:
-    if event_state.is_set():
+    print('Бот работает')
+    if my_event.is_set():  # If flag is set then break the loop
+      print('Бот остановлен')
       break
+    await asyncio.sleep(5)  # Wait 0.5 s between the requests
+    # await bot.send_message(chat_id=message.from_user.id,
+    #      text="Запущен мониторинг52")
     if 'test/temperature' in alldata:
       del alldata['test/temperature']
     readmqtt()
-    time.sleep(5)
+    await asyncio.sleep(5)
     if 'test/temperature' in alldata:
       # pass
-      # bot.send_message(message.from_user.id, alldata['test/temperature'])
-      bot.reply_to(message, alldata['test/temperature'])
+      print(alldata['test/temperature'])
+      # await bot.send_message(message.from_user.id, alldata['test/temperature'])
+      await message.answer(alldata['test/temperature'])
     else:
-      bot.reply_to(message, 'Возможно нет подключения')
-    time.sleep(60*30-5)
+      await message.answer("Возможно нет подключения")
+    await asyncio.sleep(5)  # Wait 0.5 s between the requests
+
+@dp.message(Command("stop"))
+async def cmd_stop(message: types.Message):
+  # loop = asyncio.get_event_loop()
+  # loop.run_until_complete(main4(message, my_event))
+  my_event.set()
+  # await bot.send_message(chat_id=message.from_user.id,
+  #                        text="Мониторинг остановлен")
+  await message.answer("Мониторинг остановлен")
+
+
+dp.message.register(cmd_temp, Command("temp"))
+dp.message.register(cmd_info, Command("info"))
+dp.message.register(cmd_start, Command("start"))
+dp.message.register(cmd_stop, Command("stop"))
+
+
+async def main5(message, event_state):
+  print('Бот5 запущен')
+  await bot.send_message(chat_id=message.from_user.id,
+                         text="Запущен мониторинг51")
+  while 1:
+    print('Бот работает')
+    await asyncio.sleep(5)  # Wait 0.5 s between the requests
+    await bot.send_message(chat_id=message.from_user.id,
+                           text="Запущен мониторинг52")
+    if event_state.is_set():  # If flag is set then break the loop
+      print('Бот остановлен')
+      break
+
+
+async def main():
+  await dp.start_polling(bot)
 
 
 # MQTT process
@@ -95,9 +125,6 @@ def on_message(client, userdata, msg):
   m_decode = str(msg.payload.decode("utf-8", "ignore"))
   # print("data Received type", type(m_decode))
   print("data Received", m_decode)
-  # userdata.append(m_decode)
-  #if len(userdata) >= 2:
-  # it's possible to stop the program by disconnecting
   client.disconnect()
   # m_in = json.loads(m_decode)  # decode json data
   # print(type(m_in))
@@ -126,3 +153,4 @@ readmqtt()
 print('Here2')
 # bot.polling(non_stop=True, interval=0)  #запуск бота
 # bot.infinity_polling(none_stop=True)
+asyncio.run(main())
