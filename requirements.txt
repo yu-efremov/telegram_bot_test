@@ -5,4 +5,5 @@ paho-mqtt
 asyncio
 logging
 aiogram
+influxdb3-python
 # json
