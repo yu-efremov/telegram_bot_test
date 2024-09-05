@@ -283,7 +283,7 @@ alldata = {}
 alldata['counter'] = 0
 alldata['monitoring_time'] = int(10 * (60))  # default 10 mins
 keep_alive()  #запускаем flask-сервер в отдельном потоке. Подробнее ниже...
-print('Here1')
+print('Here11')
 readmqtt()
 print('Here2')
 asyncio.run(main())
