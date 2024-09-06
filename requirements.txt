@@ -7,4 +7,5 @@ logging
 aiogram
 influxdb3-python
 matplotlib
+mpld3
 # json
