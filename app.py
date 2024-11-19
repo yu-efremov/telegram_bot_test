@@ -12,7 +12,8 @@ from aiogram.utils.formatting import (
 
 from background import keep_alive  #импорт функции для поддержки работоспособности
 
-from influxdb_client_3 import InfluxDBClient3, Point
+from influxdb_client_3 import InfluxDBClient3
+# import pandas as pd
 # import json
 
 # monitoring_time = int(10 * (60))  # seconds
@@ -37,10 +38,11 @@ async def cmd_help(message: types.Message):
   # await message.answer("Hello!")
   content = as_list(as_marked_section(
       Bold("Команды для бота:"),
-      as_key_value("Текущая температура", "/start"),
-      as_key_value("Запустить мониторинг", "/temp"),
+      as_key_value("Текущая температура", "/get_temp"),
+      as_key_value("Запустить мониторинг", "/start_monitoring"),
       as_key_value("Остановить мониторинг", "/stop"),
       as_key_value("Периодичность мониторинга", "/settimer"),
+      as_key_value("Сайт мониторинга", "https://www.sechenov.ru/"),
       marker="  ",
   ),
   )
@@ -48,19 +50,20 @@ async def cmd_help(message: types.Message):
   # await bot.send_message(chat_id=message.from_user.id, text="Some info")
 
 
-@dp.message(Command("temp"))
+@dp.message(Command("get_temp"))
 async def cmd_temp(message: types.Message):
   msgR = await message.answer("Пожодите 10 секунд для сбора информации")
-  for i, (k, v) in enumerate(topic_dict.items()):
+  for i, (k, v) in enumerate(tags_dict.items()):
     if k in alldata:
       del alldata[k]
   print(message.chat.id)
-  readmqtt()
+
+  read_influxdb()
   # await asyncio.sleep(12)  # wait in readmqtt
   # bot.reply_to(message, 'Привет! Я бот.')
   print(alldata)
   response_string = ''
-  for i, (k, v) in enumerate(topic_dict.items()):
+  for i, (k, v) in enumerate(tags_dict.items()):
     if k in alldata:
       response_string = response_string + v + ": " + alldata[k] + "\n"
       # await message.answer(v + ": " + alldata[k])
@@ -88,7 +91,7 @@ async def cmd_info(message: types.Message):
                        f"@{admin_username}")
 
 
-@dp.message(Command("start"))
+@dp.message(Command("start_monitoring"))
 async def cmd_start(message: types.Message):
   # loop = asyncio.get_event_loop()
   # loop.run_until_complete(main4(message, my_event))
@@ -108,13 +111,13 @@ async def cmd_start(message: types.Message):
         print('Бот остановлен')
         break
       await asyncio.sleep(5)  # Wait 0.5 s between the requests
-      for i, (k, v) in enumerate(topic_dict.items()):
+      for i, (k, v) in enumerate(tags_dict.items()):
         if k in alldata:
           del alldata[k]
-      readmqtt()
+      read_influxdb()
       # await asyncio.sleep(11)  # wait already in readmqtt
       response_string = ""
-      for i, (k, v) in enumerate(topic_dict.items()):
+      for i, (k, v) in enumerate(tags_dict.items()):
         if k in alldata:
           response_string = response_string + v + ": " + alldata[k] + "\n"
           # await message.answer(v + ": " + alldata[k])
@@ -184,98 +187,67 @@ async def all_other(message: types.Message):
   await message.answer("Для получения информации о существующих командах введите /help")
 
 dp.message.register(cmd_start, Command("help"))
-dp.message.register(cmd_temp, Command("temp"))
+dp.message.register(cmd_temp, Command("start_monitoring"))
 dp.message.register(cmd_info, Command("info"))
-dp.message.register(cmd_start, Command("start"))
+dp.message.register(cmd_start, Command("get_temp"))
 dp.message.register(cmd_stop, Command("stop"))
 dp.message.register(cmd_settimer, Command("settimer"))
 dp.message.register(all_other, Command("all_other"))
 
-
-# async def main5(message, event_state):
-#   print('Бот5 запущен')
-#   await bot.send_message(chat_id=message.from_user.id,
-#                          text="Запущен мониторинг51")
-#   while 1:
-#     print('Бот работает')
-#     await asyncio.sleep(5)  # Wait 0.5 s between the requests
-#     await bot.send_message(chat_id=message.from_user.id,
-#                            text="Запущен мониторинг52")
-#     if event_state.is_set():  # If flag is set then break the loop
-#       print('Бот остановлен')
-#       break
 
 
 async def main():
   await dp.start_polling(bot)
 
 
-# MQTT process
-
-topic_dict = {
-    "test/temperature": "сенсор1",
-    "test/temperature2": "сенсор2",
-}
-
-topics = []
-for i, (k, v) in enumerate(topic_dict.items()):
-  topics.append((k, i))
-  print(i, k, v)
-
-
-def on_connect(client, userdata, flags, rc):
-  global topics, flag_connected
-  print(topics)
-  client.subscribe(topics)
-  flag_connected = 1
-  print('Connected')
-
-
-def on_message(client, userdata, msg):
-  m_decode = str(msg.payload.decode("utf-8", "ignore"))
-  # print("data Received type", type(m_decode))
-  print("data Received", m_decode)
-  # client.disconnect()
-  # m_in = json.loads(m_decode)  # decode json data
-  # print(type(m_in))
-  # print("method is = ", m_in["method"])  # <-- shall be m_in["method"]
-  alldata.update({str(msg.topic): str(m_decode)})
-  alldata.update({'counter': alldata['counter'] + 1})
-  point = (
-    Point("Data")
-    .tag("location", str(msg.topic))
-    .field(str(msg.topic), float(alldata[str(msg.topic)]))
-  )
-  print(point)
-  InfluxDBclient.write(database=database, record=point)
-
-
-def readmqtt():
-  client = mqtt.Client()
-  client.username_pw_set(username=os.environ['mqtt_username'], password='')
-  client.on_connect = on_connect
-  client.on_message = on_message
-  client.connect('mqtt.beebotte.com', 1883, 60)
-  client.loop_start()  # это лучше
-  startTime = time.time()
-  runTime = 11
-  while True:
-    # mqttc.loop()
-    currentTime = time.time()
-    if (currentTime - startTime) > runTime:
-      client.disconnect()
-      break
-  # client.loop_forever()  # c этим виснет
-
 # InfluxDB part
 bucket = "test_YE"
-database="test_YE"
+database = "test_YE"
 org = "IRM"
 token = os.environ['InfluxDB_token']
 # Store the URL of your InfluxDB instance
 host="https://eu-central-1-1.aws.cloud2.influxdata.com"
 
-InfluxDBclient = InfluxDBClient3(host=host, token=token, org=org)
+InfluxDBclient = InfluxDBClient3(host=host, token=token, org=org,  database=database)
+print('Connected to InfluxDBclient')
+
+data_tags = ["SensorTypeC", "SensorNikul"]
+tags_dict = {
+  "SensorTypeC": "Сенсор1",
+  "SensorNikul": "сенсор_никул",
+}
+
+tags = []
+for i, (k, v) in enumerate(tags_dict.items()):
+  tags.append((k, i))
+  print(i, k, v)
+
+def read_influxdb():
+  measurements_name = "temperature"
+#  tabledata = InfluxDBclient.query(
+#    query="SELECT * FROM " + measurements_name +
+#    # "WHERE time >= now() - interval '1 minute'",
+#    "WHERE time >= now() - 2 m",
+#    language="influxql"
+#  )
+  tabledata = InfluxDBclient.query(query='''SELECT * as val
+  FROM temperature
+  WHERE time >= now() - 1m''', language="influxql")
+  print(tabledata)
+  for ii in range(0,len(data_tags)):
+    x_vals = tabledata['time']
+    y_vals = tabledata[data_tags[ii]]
+    y_vals = y_vals.drop_null()
+    print(y_vals)
+    # df = tabledata.to_pandas()
+    # print(df)
+    # ctemp = df['val'].iloc[-1].values
+    if len(y_vals)>0:
+      alldata.update({str(data_tags[ii]): str(y_vals[-1])})
+      print(y_vals[-1])
+    else:
+      print(data_tags[ii] + " - Нет подключения!")
+
 
 # if __name__ == '__main__': проблемы в render
 flag_connected = 0
@@ -283,7 +255,7 @@ alldata = {}
 alldata['counter'] = 0
 alldata['monitoring_time'] = int(10 * (60))  # default 10 mins
 keep_alive()  #запускаем flask-сервер в отдельном потоке. Подробнее ниже...
-print('Here11')
-readmqtt()
+print('Here1')
+read_influxdb()
 print('Here2')
 asyncio.run(main())
