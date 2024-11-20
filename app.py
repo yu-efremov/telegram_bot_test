@@ -13,6 +13,8 @@ from aiogram.utils.formatting import (
 from background import keep_alive  #импорт функции для поддержки работоспособности
 
 from influxdb_client_3 import InfluxDBClient3
+from sensors_dict import sensors_dict  # for monitoring
+sensors_list = list(sensors_dict.keys())
 # import pandas as pd
 # import json
 
@@ -42,7 +44,7 @@ async def cmd_help(message: types.Message):
       as_key_value("Запустить мониторинг", "/start_monitoring"),
       as_key_value("Остановить мониторинг", "/stop"),
       as_key_value("Периодичность мониторинга", "/settimer"),
-      as_key_value("Сайт мониторинга", "https://www.sechenov.ru/"),
+      as_key_value("Сайт мониторинга", "https://telegram-bot-test-yjoz.onrender.com"),
       marker="  ",
   ),
   )
@@ -53,7 +55,7 @@ async def cmd_help(message: types.Message):
 @dp.message(Command("get_temp"))
 async def cmd_temp(message: types.Message):
   msgR = await message.answer("Пожодите 10 секунд для сбора информации")
-  for i, (k, v) in enumerate(tags_dict.items()):
+  for i, (k, v) in enumerate(sensors_dict.items()):
     if k in alldata:
       del alldata[k]
   print(message.chat.id)
@@ -63,7 +65,7 @@ async def cmd_temp(message: types.Message):
   # bot.reply_to(message, 'Привет! Я бот.')
   print(alldata)
   response_string = ''
-  for i, (k, v) in enumerate(tags_dict.items()):
+  for i, (k, v) in enumerate(sensors_dict.items()):
     if k in alldata:
       response_string = response_string + v + ": " + alldata[k] + "\n"
       # await message.answer(v + ": " + alldata[k])
@@ -82,6 +84,32 @@ async def cmd_temp(message: types.Message):
 my_event = asyncio.Event()
 my_event.clear()
 
+@dp.message(Command("get_temp_all"))
+async def cmd_temp2(message: types.Message):
+  msgR = await message.answer("Пожодите 10 секунд для сбора информации")
+  for i, (k, v) in enumerate(tags_dict.items()):
+    if k in alldata:
+      del alldata[k]
+  print(message.chat.id)
+  print(data_tags)
+  read_influxdb()
+  # await asyncio.sleep(12)  # wait in readmqtt
+  # bot.reply_to(message, 'Привет! Я бот.')
+  print(alldata)
+  response_string = ''
+  for i, (k, v) in enumerate(tags_dict.items()):
+    if k in alldata:
+      response_string = response_string + v + ": " + alldata[k] + "\n"
+      # await message.answer(v + ": " + alldata[k])
+    else:
+      response_string = response_string + v + ": Нет подключения" + "\n"
+  await bot.edit_message_text(text=response_string,
+                              chat_id=message.chat.id,
+                              message_id=msgR.message_id)
+
+
+my_event = asyncio.Event()
+my_event.clear()
 
 @dp.message(Command("info"))
 async def cmd_info(message: types.Message):
@@ -117,7 +145,7 @@ async def cmd_start(message: types.Message):
       read_influxdb()
       # await asyncio.sleep(11)  # wait already in readmqtt
       response_string = ""
-      for i, (k, v) in enumerate(tags_dict.items()):
+      for i, (k, v) in enumerate(sensors_dict.items()):
         if k in alldata:
           response_string = response_string + v + ": " + alldata[k] + "\n"
           # await message.answer(v + ": " + alldata[k])
@@ -188,6 +216,7 @@ async def all_other(message: types.Message):
 
 dp.message.register(cmd_start, Command("help"))
 dp.message.register(cmd_temp, Command("start_monitoring"))
+dp.message.register(cmd_temp2, Command("start_monitoring_all"))
 dp.message.register(cmd_info, Command("info"))
 dp.message.register(cmd_start, Command("get_temp"))
 dp.message.register(cmd_stop, Command("stop"))
@@ -211,29 +240,53 @@ host="https://eu-central-1-1.aws.cloud2.influxdata.com"
 InfluxDBclient = InfluxDBClient3(host=host, token=token, org=org,  database=database)
 print('Connected to InfluxDBclient')
 
-data_tags = ["SensorTypeC", "SensorNikul"]
-tags_dict = {
-  "SensorTypeC": "Сенсор1",
-  "SensorNikul": "сенсор_никул",
-}
+measurements_name = "temperaturenew"
+query_str = f"SELECT * as val FROM {measurements_name} WHERE time >= now() - 2m"
+tabledata = InfluxDBclient.query(query=query_str, language="influxql")
+data_tags = tabledata.column_names
+print("Table names")
+data_tags.remove('time')
+data_tags.remove('SSID')
+data_tags.remove('device')
+data_tags.remove('location')
+data_tags.remove('iox::measurement')
+print(data_tags)
+tags_dict = dict(zip(data_tags, data_tags))
+# data_tags = ["SensorTypeC", "SensorNikul"]
+# tags_dict = {
+#   "SensorTypeC": "Сенсор1",
+#   "SensorNikul": "сенсор_никул",
+# }
 
-tags = []
-for i, (k, v) in enumerate(tags_dict.items()):
-  tags.append((k, i))
-  print(i, k, v)
+# tags = []
+# for i, (k, v) in enumerate(tags_dict.items()):
+#   tags.append((k, i))
+#   print(i, k, v)
 
 def read_influxdb():
-  measurements_name = "temperature"
+  measurements_name = "temperaturenew"
 #  tabledata = InfluxDBclient.query(
 #    query="SELECT * FROM " + measurements_name +
 #    # "WHERE time >= now() - interval '1 minute'",
 #    "WHERE time >= now() - 2 m",
 #    language="influxql"
 #  )
-  tabledata = InfluxDBclient.query(query='''SELECT * as val
-  FROM temperature
-  WHERE time >= now() - 1m''', language="influxql")
+  query_str = f"SELECT * as val FROM {measurements_name} WHERE time >= now() - 2m"
+#  tabledata = InfluxDBclient.query(query='''SELECT * as val
+#  FROM temperature
+#  WHERE time >= now() - 1m''', language="influxql")
+  tabledata = InfluxDBclient.query(query=query_str, language="influxql")
   print(tabledata)
+  data_tags = tabledata.column_names
+  print("Table names")
+  data_tags.remove('time')
+  data_tags.remove('SSID')
+  data_tags.remove('device')
+  data_tags.remove('location')
+  data_tags.remove('iox::measurement')
+  print(data_tags)
+  tags_dict = dict(zip(data_tags, data_tags))
+  
   for ii in range(0,len(data_tags)):
     x_vals = tabledata['time']
     y_vals = tabledata[data_tags[ii]]
