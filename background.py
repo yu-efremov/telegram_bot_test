@@ -70,7 +70,7 @@ def home():
   data_tags.remove('location')
   print(data_tags)
   for ii in range(0,len(data_tags)):
-    x_vals = tabledata['time'] + 
+    x_vals = tabledata['time'] 
     y_vals = tabledata[data_tags[ii]]
     ax.plot(x_vals, y_vals, label=data_tags[ii])  # plt.plot
 
