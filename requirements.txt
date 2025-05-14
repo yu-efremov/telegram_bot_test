@@ -3,7 +3,7 @@ gunicorn
 requests
 paho-mqtt
 asyncio
-logging
+# logging
 aiogram
 influxdb3-python
 matplotlib
