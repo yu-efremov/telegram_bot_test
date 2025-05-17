@@ -90,7 +90,7 @@ def favicon():
 
 
 def run():
-  app.run(host='0.0.0.0', port=8000)  # host='0.0.0.0', port=80  127.0.0.1
+  app.run(host='0.0.0.0', port=80)  # host='0.0.0.0', port=80  127.0.0.1
 
 
 def keep_alive():
